@@ -1,33 +1,24 @@
 const express = require('express');
 const cors = require("cors");
+const { MongoClient, ServerApiVersion } = require('mongodb');
+
 const app = express();
-//const products = require('./products.json');
 
-
-const allowedOrigins = ['http://localhost:5000', 'https://react-product-frontend.web.app'];
-
+// CORS Setup
+const allowedOrigins = ['http://localhost:5000', 'https://your-frontend-domain.com'];
 const corsOptions = {
-  origin: 'http://localhost:5000',
+  origin: allowedOrigins,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 };
 
-// course-db-user
-//db user pass C0ty9cBpGwvB1Gb8
-
-
 app.use(cors(corsOptions));
 app.use(express.json());
-
-
 app.options('*', cors(corsOptions));
 
-
-const { MongoClient, ServerApiVersion } = require('mongodb');
+// MongoDB Connection URI and Client Setup
 const uri = "mongodb+srv://course-db-user:C0ty9cBpGwvB1Gb8@my-course.s6sig.mongodb.net/?retryWrites=true&w=majority&appName=My-course";
-
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -36,65 +27,77 @@ const client = new MongoClient(uri, {
   }
 });
 
-async function run() {
-  try {
-    // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+let userCollection;  // Define userCollection outside
 
-    // Send a ping to confirm a successful connection
-    await client.db("productShop").command({ ping: 1 });
+// Connect to MongoDB and Start Server
+async function connectToDatabase() {
+  try {
+    await client.connect(); // Ensure the client is connected
     console.log("Successfully connected to MongoDB!");
 
-    // Set up the user collection
-    const userCollection = client.db("productShop").collection("users");
+    // Initialize the collection after the client is connected
+    userCollection = client.db("productShop").collection("users");
+    console.log("User collection initialized!");
 
-    app.get("/users", async (req, res) => {
-        try {
-          const result = await userCollection.find().toArray();
-          console.log('Get result:', result);
-          res.status(201).json(result);
-        } catch (err) {
-          console.error('Error getting user:', err);
-          res.status(500).json({ error: 'Failed to get user' });
-        }
-      });
-
-    // Endpoint to create users
-    app.post("/users", async (req, res) => {
-      const user = req.body;
-      console.log('User:', user);
-      
-      try {
-        const result = await userCollection.insertOne(user);
-        console.log('Insert result:', result);
-        res.status(201).json(result);
-      } catch (err) {
-        console.error('Error inserting user:', err);
-        res.status(500).json({ error: 'Failed to create user' });
-      }
+    // Start the Express server after MongoDB connection is ready
+    const PORT = process.env.PORT || 5000;
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
     });
-    // Send a ping to confirm a successful connection
-    //await client.db("productShop").command({ ping: 1 });
-    //console.log("Pinged your deployment. You successfully connected to MongoDB!");
-  } finally {
-    // Ensures that the client will close when you finish/error
-    //await client.close();
+    
+  } catch (err) {
+    console.error("Error connecting to MongoDB:", err);
   }
 }
-run().catch(console.dir);
 
+connectToDatabase(); // Call the function to connect to the database
 
+// Get Users Endpoint
+app.get("/users", async (req, res) => {
+  try {
+    if (!userCollection) {
+      return res.status(500).json({ error: 'Database not initialized' });
+    }
 
-
-app.get('/products', (req, res) => {
-  return res.status(404).send("this are the products");
+    const result = await userCollection.find().toArray();
+    console.log('Get result:', result);
+    res.status(200).json(result);
+  } catch (err) {
+    console.error('Error getting users:', err);
+    res.status(500).json({ error: 'Failed to get users' });
+  }
 });
 
-app.get('/products/:id', (req, res) => {
-  //const product = products.find(p => p._id === req.params.id);
-  return res.status(404).send('Product not found');
-  //res.json(product);
+// Create User Endpoint
+app.post("/users", async (req, res) => {
+  const user = req.body;
+  console.log('User:', user);
+
+  try {
+    if (!userCollection) {
+      return res.status(500).json({ error: 'Database not initialized' });
+    }
+
+    const result = await userCollection.insertOne(user);
+    console.log('Insert result:', result);
+    res.status(201).json(result);
+  } catch (err) {
+    console.error('Error inserting user:', err);
+    res.status(500).json({ error: 'Failed to create user' });
+  }
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// Route to fetch user details
+app.post('/user/details', async (req, res) => {
+    const { email } = req.body;
+    try {
+      const user = await userCollection.findOne({ email });
+      if (user) {
+        res.status(200).json(user); // Send back user details
+      } else {
+        res.status(404).json({ error: 'User not found' });
+      }
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to get user details' });
+    }
+  });

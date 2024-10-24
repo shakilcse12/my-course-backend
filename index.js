@@ -5,7 +5,7 @@ const { MongoClient, ServerApiVersion } = require('mongodb');
 const app = express();
 
 // CORS Setup
-const allowedOrigins = ['http://localhost:5000', 'https://your-frontend-domain.com'];
+const allowedOrigins = ['http://localhost:3000', 'https://your-frontend-domain.com'];
 const corsOptions = {
   origin: allowedOrigins,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -99,5 +99,23 @@ app.post('/user/details', async (req, res) => {
       }
     } catch (err) {
       res.status(500).json({ error: 'Failed to get user details' });
+    }
+  });
+
+  // Route to register a user
+  app.post('/user/register', async (req, res) => {
+    const { email, name, phone, address } = req.body;
+    try {
+      const newUser = {
+        email,
+        name,
+        phone,
+        address,
+        role: 'user', // Default role as 'user', can be 'admin' later
+      };
+      await userCollection.insertOne(newUser);
+      res.status(201).json({ message: 'User registered successfully' });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to register user' });
     }
   });

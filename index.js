@@ -8,7 +8,7 @@ const app = express();
 const allowedOrigins = ['http://localhost:3000', 'https://your-frontend-domain.com'];
 const corsOptions = {
   origin: allowedOrigins,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', , 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 };
@@ -27,30 +27,39 @@ const client = new MongoClient(uri, {
   }
 });
 
-let userCollection;  // Define userCollection outside
+let userCollection;
+let productCollection;
+let categoryCollection;
 
 // Connect to MongoDB and Start Server
 async function connectToDatabase() {
   try {
-    await client.connect(); // Ensure the client is connected
+    await client.connect();
     console.log("Successfully connected to MongoDB!");
 
     // Initialize the collection after the client is connected
     userCollection = client.db("productShop").collection("users");
+    productCollection = client.db("productShop").collection("products");
+    categoryCollection = client.db("productShop").collection("categories");
     console.log("User collection initialized!");
+
+    // Set collections for admin routes
+    const { router: adminRoutes, setCollections } = require('./routes/admin');
+    setCollections(userCollection, categoryCollection, productCollection);
+    app.use('/admin', adminRoutes);
 
     // Start the Express server after MongoDB connection is ready
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
-    
+
   } catch (err) {
     console.error("Error connecting to MongoDB:", err);
   }
 }
 
-connectToDatabase(); // Call the function to connect to the database
+connectToDatabase();
 
 // Get Users Endpoint
 app.get("/users", async (req, res) => {
@@ -89,33 +98,33 @@ app.post("/users", async (req, res) => {
 
 // Route to fetch user details
 app.post('/user/details', async (req, res) => {
-    const { email } = req.body;
-    try {
-      const user = await userCollection.findOne({ email });
-      if (user) {
-        res.status(200).json(user); // Send back user details
-      } else {
-        res.status(404).json({ error: 'User not found' });
-      }
-    } catch (err) {
-      res.status(500).json({ error: 'Failed to get user details' });
+  const { email } = req.body;
+  try {
+    const user = await userCollection.findOne({ email });
+    if (user) {
+      res.status(200).json(user); // Send back user details
+    } else {
+      res.status(404).json({ error: 'User not found' });
     }
-  });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to get user details' });
+  }
+});
 
-  // Route to register a user
-  app.post('/user/register', async (req, res) => {
-    const { email, name, phone, address } = req.body;
-    try {
-      const newUser = {
-        email,
-        name,
-        phone,
-        address,
-        role: 'user', // Default role as 'user', can be 'admin' later
-      };
-      await userCollection.insertOne(newUser);
-      res.status(201).json({ message: 'User registered successfully' });
-    } catch (err) {
-      res.status(500).json({ error: 'Failed to register user' });
-    }
-  });
+// Route to register a user
+app.post('/user/register', async (req, res) => {
+  const { email, name, phone, address } = req.body;
+  try {
+    const newUser = {
+      email,
+      name,
+      phone,
+      address,
+      role: 'user', // Default role as 'user', can be 'admin' later
+    };
+    await userCollection.insertOne(newUser);
+    res.status(201).json({ message: 'User registered successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to register user' });
+  }
+});

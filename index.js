@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require("cors");
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const { ObjectId } = require('mongodb');
+const Purchase = require('./Data/Models/Purchase');
 
 const app = express();
 
@@ -31,6 +32,7 @@ const client = new MongoClient(uri, {
 let userCollection;
 let productCollection;
 let categoryCollection;
+let purchaseCollection;
 
 // Connect to MongoDB and Start Server
 async function connectToDatabase() {
@@ -42,7 +44,8 @@ async function connectToDatabase() {
     userCollection = client.db("productShop").collection("users");
     productCollection = client.db("productShop").collection("products");
     categoryCollection = client.db("productShop").collection("categories");
-    console.log("User collection initialized!");
+    purchaseCollection = client.db("productShop").collection("purchase");
+    console.log("collections initialized!");
 
     // Set collections for admin routes
     const { router: adminRoutes, setCollections } = require('./routes/admin');
@@ -176,6 +179,64 @@ app.get('/products/:id', async (req, res) => {
   } catch (error) {
     console.error('Error fetching product details:', error.message);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.post('/buy', async (req, res) => {
+  const { userId, courseId, userName, email, phone, address, emergencyContact } = req.body;
+   // Basic validation
+   if (!userId || !userName) {
+    return res.status(400).json({ message: "User ID and User Name are required." });
+  }
+  try {
+    const newPurchase = new Purchase({
+      userId,
+      courseId,
+      userName,
+      email,
+      phone,
+      address,
+      emergencyContact
+    });
+
+    console.log("purchase = ", newPurchase);
+
+    const response = await newPurchase.save();
+    console.log("server response =", response);
+    res.status(201).json({ message: 'Purchase successful!' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Failed to complete purchase' });
+  }
+});
+
+app.post("/purchase", async (req, res) => {
+  const { userId, courseId, userName, email, phone, address, emergencyContact } = req.body;
+
+  const purchase = req.body;
+  console.log('Purchase:', purchase);
+
+  try {
+    if (!purchaseCollection) {
+      return res.status(500).json({ error: 'Database not initialized' });
+    }
+
+    const newPurchase = {
+      userName: userName,
+      email: email,
+      phone: phone,
+      address: address,
+      emergencyContact: emergencyContact,
+      userId: new ObjectId(userId),
+      courseId: new ObjectId(courseId)
+  }
+
+    const result = await purchaseCollection.insertOne(newPurchase);
+    console.log('Insert result:', result);
+    res.status(201).json(result);
+  } catch (err) {
+    console.error('Error inserting purchase:', err);
+    res.status(500).json({ error: 'Failed to create purchase' });
   }
 });
 

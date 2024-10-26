@@ -65,6 +65,29 @@ async function connectToDatabase() {
 
 connectToDatabase();
 
+// user update profile info from user dashboard
+app.put('/users/:userId', async (req, res) => {
+  const { userId } = req.params;
+  const { userName, phone, address, profilePicture } = req.body;
+
+  try {
+    const result = await userCollection.updateOne(
+      { _id: new ObjectId(userId) },
+      { $set: { userName, phone, address, profilePicture } }
+    );
+
+    if (result.modifiedCount > 0) {
+      res.status(200).json({ message: 'Profile updated successfully' });
+    } else {
+      res.status(400).json({ message: 'No changes made' });
+    }
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(500).json({ message: 'Failed to update profile' });
+  }
+});
+
+
 // Get Users Endpoint
 app.get("/users", async (req, res) => {
   try {
@@ -241,7 +264,7 @@ app.post("/purchase", async (req, res) => {
 });
 
 // Endpoint to get all purchases for a specific user
-app.get('/purchases/:userId', async (req, res) => {
+app.get('/purchase/:userId', async (req, res) => {
   try {
     const userId = req.params.userId;
     //console.log("userID = ", userId);
@@ -253,4 +276,48 @@ app.get('/purchases/:userId', async (req, res) => {
     res.status(500).json({ message: 'Failed to fetch purchases' });
   }
 });
+
+app.get('/purchases/:userId', async (req, res) => {
+  try {
+    const userId = req.params.userId;
+
+    const purchases = await purchaseCollection.aggregate([
+      {
+        $match: { userId: new ObjectId(userId) },
+      },
+      {
+        $lookup: {
+          from: 'products', // The name of the product collection
+          localField: 'courseId', // Field in purchaseCollection to match with product _id
+          foreignField: '_id', // Field in productCollection
+          as: 'productDetails', // Alias for the joined data
+        },
+      },
+      {
+        $unwind: '$productDetails', // Deconstructs the array from $lookup
+      },
+      {
+        $project: {
+          _id: 1,
+          userId: 1,
+          purchaseDate: 1,
+          userName: 1,
+          email: 1,
+          productId: '$productDetails._id',
+          productName: '$productDetails.name',
+          productPrice: '$productDetails.price',
+          productImage: '$productDetails.image',
+          productRating: '$productDetails.rating',
+          productCategory: '$productDetails.category',
+        },
+      },
+    ]).toArray();
+
+    res.status(200).json(purchases);
+  } catch (error) {
+    console.error("Error fetching purchases:", error);
+    res.status(500).json({ message: 'Failed to fetch purchases' });
+  }
+});
+
 

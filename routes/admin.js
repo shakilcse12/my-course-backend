@@ -28,17 +28,19 @@ router.get('/users', async (req, res) => {
 // Update user details
 router.patch('/user/:id', async (req, res) => {
   try {
-    const { name, phoneNumber, address, profilePicture, role } = req.body;
+    const { name, phoneNumber, address, profilePicture, role, _id } = req.body;
     const user = await userCollection.findOne({ _id: new ObjectId(req.params.id) });
 
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     const updatedUser = {
+      _id: (_id) ?? user._id,
       name: name ?? user.name,
       phoneNumber: phoneNumber ?? user.phoneNumber,
       address: address ?? user.address,
       profilePicture: profilePicture ?? user.profilePicture,
       role: role ?? user.role,
+      email: user.email
     };
 
     await userCollection.updateOne({ _id: new ObjectId(req.params.id) }, { $set: updatedUser });
@@ -112,8 +114,9 @@ router.post('/products', async (req, res) => {
 });
 
 // Edit a product
-router.put('/products/:id', async (req, res) => {
+router.put('/product/:id', async (req, res) => {
   try {
+    console.log("received product id = ", req.params.id);
     const product = await productCollection.findOne({ _id: new ObjectId(req.params.id) });
     if (!product) return res.status(404).json({ message: 'Product not found' });
 
@@ -123,6 +126,34 @@ router.put('/products/:id', async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
+router.put('/products/:id', async (req, res) => {
+    try {
+        const productId = new ObjectId(req.params.id);
+
+        // Fetch the existing product
+        const existingProduct = await productCollection.findOne({ _id: productId });
+        if (!existingProduct) {
+            return res.status(404).json({ message: 'Product not found' });
+        }
+
+        // Create an updated product object
+        const updatedProduct = {
+            ...existingProduct, // spread the existing product details
+            ...req.body // overwrite only the fields that are sent in the request body
+        };
+
+        // Update the product in the database
+        await productCollection.updateOne({ _id: productId }, { $set: updatedProduct });
+
+        // Return the updated product
+        res.json({ product: updatedProduct, message: 'Product updated successfully' });
+    } catch (error) {
+        console.error("Error updating product:", error.message);
+        res.status(500).json({ message: error.message });
+    }
+});
+
 
 // Delete a product
 router.delete('/products/:id', async (req, res) => {

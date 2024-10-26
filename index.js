@@ -240,3 +240,17 @@ app.post("/purchase", async (req, res) => {
   }
 });
 
+// Endpoint to get all purchases for a specific user
+app.get('/purchases/:userId', async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    //console.log("userID = ", userId);
+    const purchases = await purchaseCollection.find({ userId: new ObjectId(userId)}).toArray();
+    //console.log("purchases = ", purchases);
+    res.status(200).json(purchases);
+  } catch (error) {
+    console.error("Error fetching purchases:", error);
+    res.status(500).json({ message: 'Failed to fetch purchases' });
+  }
+});
+

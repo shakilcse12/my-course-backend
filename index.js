@@ -3,11 +3,12 @@ const cors = require("cors");
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const { ObjectId } = require('mongodb');
 const Purchase = require('./Data/Models/Purchase');
+require("dotenv").config();
 
 const app = express();
 
 // CORS Setup
-const allowedOrigins = ['http://localhost:3000', 'https://your-frontend-domain.com'];
+const allowedOrigins = ['http://localhost:3000', 'https://react-product-frontend.web.app/'];
 const corsOptions = {
   origin: allowedOrigins,
   methods: ['GET', 'POST', 'PUT', 'DELETE', , 'PATCH', 'OPTIONS'],
@@ -20,7 +21,7 @@ app.use(express.json());
 app.options('*', cors(corsOptions));
 
 // MongoDB Connection URI and Client Setup
-const uri = "mongodb+srv://course-db-user:C0ty9cBpGwvB1Gb8@my-course.s6sig.mongodb.net/?retryWrites=true&w=majority&appName=My-course";
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_SECRET}@my-course.s6sig.mongodb.net/?retryWrites=true&w=majority&appName=My-course`;
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,

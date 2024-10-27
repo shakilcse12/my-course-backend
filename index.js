@@ -205,6 +205,34 @@ app.get('/products/:id', async (req, res) => {
   }
 });
 
+app.post('/products/details', async (req, res) => {
+  try {
+    const { productId, userId } = req.body;
+    console.log("Received request with Product ID:", productId, "and User ID:", userId);
+
+    // Validate Product and User IDs
+    if (!ObjectId.isValid(productId) || !ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Invalid product or user ID' });
+    }
+
+    // Fetch Product Details
+    const product = await productCollection.findOne({ _id: new ObjectId(productId) });
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    // Check Purchase Status
+    const purchase = await purchaseCollection.findOne({ courseId: new ObjectId(productId), userId: new ObjectId(userId) });
+    const isBought = !!purchase; // true if purchase exists, false otherwise
+
+    res.status(200).json({ product, isBought });
+  } catch (error) {
+    console.error('Error in /products/details API:', error.message);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+
 app.post('/buy', async (req, res) => {
   const { userId, courseId, userName, email, phone, address, emergencyContact } = req.body;
    // Basic validation
@@ -264,18 +292,6 @@ app.post("/purchase", async (req, res) => {
 });
 
 // Endpoint to get all purchases for a specific user
-app.get('/purchase/:userId', async (req, res) => {
-  try {
-    const userId = req.params.userId;
-    //console.log("userID = ", userId);
-    const purchases = await purchaseCollection.find({ userId: new ObjectId(userId)}).toArray();
-    //console.log("purchases = ", purchases);
-    res.status(200).json(purchases);
-  } catch (error) {
-    console.error("Error fetching purchases:", error);
-    res.status(500).json({ message: 'Failed to fetch purchases' });
-  }
-});
 
 app.get('/purchases/:userId', async (req, res) => {
   try {
